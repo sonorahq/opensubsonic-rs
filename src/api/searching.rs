@@ -102,6 +102,9 @@ pub struct Search2Options {
     pub song_offset: Option<i32>,
     /// Restrict to a music folder (`musicFolderId`).
     pub music_folder_id: Option<String>,
+    /// Restrict to several music folders at once, one `musicFolderId` each, which Navidrome
+    /// 0.58 and later read together.
+    pub music_folder_ids: Vec<String>,
 }
 
 impl Search2Options {
@@ -158,6 +161,13 @@ impl Search2Options {
         self.music_folder_id = Some(v.into());
         self
     }
+
+    /// Set one `musicFolderId` per item: restrict to several music folders at once.
+    #[must_use]
+    pub fn music_folder_ids(mut self, ids: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.music_folder_ids = ids.into_iter().map(Into::into).collect();
+        self
+    }
 }
 
 /// Optional parameters for [`Client::search3`].
@@ -178,6 +188,9 @@ pub struct Search3Options {
     pub song_offset: Option<i32>,
     /// Restrict to a music folder (`musicFolderId`).
     pub music_folder_id: Option<String>,
+    /// Restrict to several music folders at once, one `musicFolderId` each, which Navidrome
+    /// 0.58 and later read together.
+    pub music_folder_ids: Vec<String>,
 }
 
 impl Search3Options {
@@ -234,6 +247,13 @@ impl Search3Options {
         self.music_folder_id = Some(v.into());
         self
     }
+
+    /// Set one `musicFolderId` per item: restrict to several music folders at once.
+    #[must_use]
+    pub fn music_folder_ids(mut self, ids: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.music_folder_ids = ids.into_iter().map(Into::into).collect();
+        self
+    }
 }
 
 fn search_params(o: &SearchOptions) -> Params {
@@ -257,6 +277,7 @@ fn search2_params(query: &str, o: &Search2Options) -> Params {
         .with_opt("songCount", o.song_count)
         .with_opt("songOffset", o.song_offset)
         .with_opt("musicFolderId", o.music_folder_id.as_deref())
+        .with_all("musicFolderId", &o.music_folder_ids)
 }
 
 fn search3_params(query: &str, o: &Search3Options) -> Params {
@@ -269,6 +290,7 @@ fn search3_params(query: &str, o: &Search3Options) -> Params {
         .with_opt("songCount", o.song_count)
         .with_opt("songOffset", o.song_offset)
         .with_opt("musicFolderId", o.music_folder_id.as_deref())
+        .with_all("musicFolderId", &o.music_folder_ids)
 }
 
 impl Client {
@@ -404,6 +426,20 @@ mod tests {
                 ("songCount", "5"),
                 ("songOffset", "6"),
                 ("musicFolderId", "x6")
+            ]
+        );
+    }
+
+    #[test]
+    fn search3_params_several_folders() {
+        let o = Search3Options::new().music_folder_ids(["1", "3"]);
+        let p = search3_params("q", &o);
+        assert_eq!(
+            collect(&p),
+            vec![
+                ("query", "q"),
+                ("musicFolderId", "1"),
+                ("musicFolderId", "3")
             ]
         );
     }

@@ -51,6 +51,9 @@ pub struct AlbumListOptions {
     pub genre: Option<String>,
     /// Restrict to a music folder (`musicFolderId`).
     pub music_folder_id: Option<String>,
+    /// Restrict to several music folders at once, one `musicFolderId` each, which Navidrome
+    /// 0.58 and later read together.
+    pub music_folder_ids: Vec<String>,
 }
 
 impl AlbumListOptions {
@@ -100,6 +103,13 @@ impl AlbumListOptions {
         self.music_folder_id = Some(v.into());
         self
     }
+
+    /// Set one `musicFolderId` per item: restrict to several music folders at once.
+    #[must_use]
+    pub fn music_folder_ids(mut self, ids: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.music_folder_ids = ids.into_iter().map(Into::into).collect();
+        self
+    }
 }
 
 /// Optional parameters for [`Client::get_random_songs`].
@@ -116,6 +126,9 @@ pub struct RandomSongsOptions {
     pub to_year: Option<i32>,
     /// Restrict to a music folder (`musicFolderId`).
     pub music_folder_id: Option<String>,
+    /// Restrict to several music folders at once, one `musicFolderId` each, which Navidrome
+    /// 0.58 and later read together.
+    pub music_folder_ids: Vec<String>,
 }
 
 impl RandomSongsOptions {
@@ -158,6 +171,13 @@ impl RandomSongsOptions {
         self.music_folder_id = Some(v.into());
         self
     }
+
+    /// Set one `musicFolderId` per item: restrict to several music folders at once.
+    #[must_use]
+    pub fn music_folder_ids(mut self, ids: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.music_folder_ids = ids.into_iter().map(Into::into).collect();
+        self
+    }
 }
 
 /// Optional parameters for [`Client::get_songs_by_genre`].
@@ -170,6 +190,9 @@ pub struct SongsByGenreOptions {
     pub offset: Option<i32>,
     /// Restrict to a music folder (`musicFolderId`).
     pub music_folder_id: Option<String>,
+    /// Restrict to several music folders at once, one `musicFolderId` each, which Navidrome
+    /// 0.58 and later read together.
+    pub music_folder_ids: Vec<String>,
 }
 
 impl SongsByGenreOptions {
@@ -196,6 +219,13 @@ impl SongsByGenreOptions {
     #[must_use]
     pub fn music_folder_id(mut self, v: impl Into<String>) -> Self {
         self.music_folder_id = Some(v.into());
+        self
+    }
+
+    /// Set one `musicFolderId` per item: restrict to several music folders at once.
+    #[must_use]
+    pub fn music_folder_ids(mut self, ids: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.music_folder_ids = ids.into_iter().map(Into::into).collect();
         self
     }
 }
@@ -226,6 +256,7 @@ fn album_list_params(list_type: AlbumListType, o: &AlbumListOptions) -> Params {
         .with_opt("toYear", o.to_year)
         .with_opt("genre", o.genre.as_deref())
         .with_opt("musicFolderId", o.music_folder_id.as_deref())
+        .with_all("musicFolderId", &o.music_folder_ids)
 }
 
 fn random_songs_params(o: &RandomSongsOptions) -> Params {
@@ -235,6 +266,7 @@ fn random_songs_params(o: &RandomSongsOptions) -> Params {
         .with_opt("fromYear", o.from_year)
         .with_opt("toYear", o.to_year)
         .with_opt("musicFolderId", o.music_folder_id.as_deref())
+        .with_all("musicFolderId", &o.music_folder_ids)
 }
 
 fn songs_by_genre_params(genre: &str, o: &SongsByGenreOptions) -> Params {
@@ -243,6 +275,7 @@ fn songs_by_genre_params(genre: &str, o: &SongsByGenreOptions) -> Params {
         .with_opt("count", o.count)
         .with_opt("offset", o.offset)
         .with_opt("musicFolderId", o.music_folder_id.as_deref())
+        .with_all("musicFolderId", &o.music_folder_ids)
 }
 
 impl Client {
@@ -338,6 +371,18 @@ impl Client {
         let params = Params::new().with_opt("musicFolderId", music_folder_id);
         self.get_field("getStarred2", &params, "starred2").await
     }
+
+    /// Get starred songs, albums and artists (ID3-based) of several music folders at once, one
+    /// `musicFolderId` each, which Navidrome 0.58 and later read together.
+    ///
+    /// See <https://opensubsonic.netlify.app/docs/endpoints/getstarred2/>
+    pub async fn get_starred2_in(
+        &self,
+        music_folder_ids: &[&str],
+    ) -> Result<Starred2Content, Error> {
+        let params = Params::new().with_all("musicFolderId", music_folder_ids);
+        self.get_field("getStarred2", &params, "starred2").await
+    }
 }
 
 /// Starred content (folder-based).
@@ -376,6 +421,20 @@ mod tests {
 
     fn collect(p: &Params) -> Vec<(&str, &str)> {
         p.iter().collect()
+    }
+
+    #[test]
+    fn album_list_several_folders() {
+        let o = AlbumListOptions::new().music_folder_ids(["1", "3"]);
+        let p = album_list_params(AlbumListType::Newest, &o);
+        assert_eq!(
+            collect(&p),
+            vec![
+                ("type", "newest"),
+                ("musicFolderId", "1"),
+                ("musicFolderId", "3")
+            ]
+        );
     }
 
     #[test]

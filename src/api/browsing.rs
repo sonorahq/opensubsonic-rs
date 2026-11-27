@@ -77,6 +77,15 @@ impl Client {
         self.get_field("getArtists", &params, "artists").await
     }
 
+    /// Get all artists (ID3-based) of several music folders at once, one `musicFolderId` each,
+    /// which Navidrome 0.58 and later read together.
+    ///
+    /// See <https://opensubsonic.netlify.app/docs/endpoints/getartists/>
+    pub async fn get_artists_in(&self, music_folder_ids: &[&str]) -> Result<ArtistsId3, Error> {
+        let params = Params::new().with_all("musicFolderId", music_folder_ids);
+        self.get_field("getArtists", &params, "artists").await
+    }
+
     /// Get details for an artist, including a list of albums (ID3-based).
     ///
     /// See <https://opensubsonic.netlify.app/docs/endpoints/getartist/>

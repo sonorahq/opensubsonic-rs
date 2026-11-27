@@ -247,6 +247,66 @@ async fn get_artists_typed() {
 }
 
 #[tokio::test]
+async fn get_artists_in_several_folders() {
+    let server = MockServer::start().await;
+    let body = ok_envelope(json!({
+        "artists": {
+            "index": [
+                {"name": "B", "artist": [
+                    {"id": "100000049", "name": "Beck", "albumCount": 12}
+                ]}
+            ]
+        }
+    }));
+    Mock::given(path("/rest/getArtists"))
+        .and(RepeatedQuery::new("musicFolderId", &["1", "3"]))
+        .respond_with(json_response(&body))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let artists = token_client(&server)
+        .get_artists_in(&["1", "3"])
+        .await
+        .unwrap();
+    assert_eq!(artists.index[0].artist[0].name, "Beck");
+}
+
+#[tokio::test]
+async fn get_artists_in_no_folder_reads_everything() {
+    let server = MockServer::start().await;
+    let body = ok_envelope(json!({ "artists": { "index": [] } }));
+    Mock::given(path("/rest/getArtists"))
+        .and(NoQuery("musicFolderId"))
+        .respond_with(json_response(&body))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let artists = token_client(&server).get_artists_in(&[]).await.unwrap();
+    assert!(artists.index.is_empty());
+}
+
+#[tokio::test]
+async fn get_starred2_in_several_folders() {
+    let server = MockServer::start().await;
+    let body = ok_envelope(json!({
+        "starred2": {
+            "song": [{"id": "s1", "title": "Loser", "isDir": false}]
+        }
+    }));
+    Mock::given(path("/rest/getStarred2"))
+        .and(RepeatedQuery::new("musicFolderId", &["2", "5"]))
+        .respond_with(json_response(&body))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let starred = token_client(&server)
+        .get_starred2_in(&["2", "5"])
+        .await
+        .unwrap();
+    assert_eq!(starred.song[0].id, "s1");
+}
+
+#[tokio::test]
 async fn get_album_typed() {
     let server = MockServer::start().await;
     let body = ok_envelope(json!({
