@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `music_folder_ids` on the search, album list, random songs and songs by genre options, and
+  `get_artists_in` and `get_starred2_in`, which send one `musicFolderId` per folder so
+  Navidrome 0.58 and later read several music folders at once.
+
 ## [0.7.0] - 2026-11-06
 
 ### Fixed
